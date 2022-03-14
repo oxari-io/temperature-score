@@ -1,0 +1,6 @@
+# data
+*.xlsx
+*.csv
+
+# temp
+*.xlsx#
