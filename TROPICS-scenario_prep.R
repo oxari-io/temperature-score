@@ -458,8 +458,12 @@ for(i in c(1:length(slope_colsLinear))) {
 }
 
 #____4.6 Filter based on different combinations of parameters ================================
-
+# ! we don't need these filters
 sr15_prefilter <- sr15_var_long %>% merge(sr15_meta, by='Model-Scenario')
+
+# we do something else down here
+# take out the shit from baseline.csv
+
 
 # Latest allowed peak year of emissions
 latest_peak <- c(2100, 2020, 2025, 2030)
@@ -489,6 +493,7 @@ for(pi in which_peak_var){
   for(ci in which_cdr_var) {
     for(ai in applied_to) {
       for(peak_yr in latest_peak) {
+        # this we want 
         for(cdr_val in min_co2) {
           
           counter <- counter + 1

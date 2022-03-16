@@ -6,29 +6,40 @@ import patsy as ps
 scenario_data_path_xls = "./input_data/iamc15_scenario_data_world_r2.0.xlsx"
 scenario_data_path = "./input_data/iamc15_scenario_data_world_r2.0.csv"
 
+baseline_path = "./input_data/baselines.csv"
+temp66_path = "./input_data/temp66.csv"
+
 scenario_metadata_indicators = "./input_data/sr15_metadata_indicators_r2.0.xlsx"
 
-test_lar = 1000
 #  %%
-# main line in R-code that needs to be translated
-# sr15_prefilter <- sr15_var_long %>% merge(sr15_meta, by='Model-Scenario')
-
+# read data
 scenarios_meta = pd.read_excel(scenario_metadata_indicators, sheet_name="meta")
-scenarios_meta["Model-Scenario"] = scenarios_meta.model.map(
+year_data = pd.read_csv(scenario_data_path)
+baselines = pd.read_csv(baseline_path)['baseline'].to_numpy()
+temp66 = pd.read_csv(temp66_path)
+
+
+#  %%
+# filtering
+initial_lines = scenarios_meta.shape[0]
+scenarios_meta = scenarios_meta[~scenarios_meta.scenario.isin(baselines)]
+print(f"---- {scenarios_meta.shape[0]} out of {initial_lines} rows remained after filtering the Metadata dataframe. ----")
+
+scenarios_meta["model-scenario"] = scenarios_meta.model.map(
     str) + "-" + scenarios_meta.scenario.map(str)
 scenarios_meta = scenarios_meta.iloc[:, 2:]
-# scenarios_meta.head()
+
+initial_lines = year_data.shape[0]
+year_data.columns = year_data.columns.str.lower()
+year_data = year_data[~year_data.scenario.isin(baselines)]
+print(f"---- {year_data.shape[0]} out of {initial_lines} rows remained after filtering the Full Data dataframe. ----")
+
+year_data["model-scenario"] = year_data.model.map(
+    str) + "-" + year_data.scenario.map(str)
+year_data = year_data.iloc[:, 2:]
+
 # %%
-# all_data = pd.read_csv(scenario_data_path, dtype={str(c): np.float64 for c in range (2000, 2101)})
-all_data = pd.read_csv(scenario_data_path)
-
-all_data["Model-Scenario"] = all_data.Model.map(
-    str) + "-" + all_data.Scenario.map(str)
-all_data = all_data.iloc[:, 2:]
-
-# all_data.head()
-
-# %%
+# get only useful variables
 
 parentvar_to_subvar = {
     'Emissions|CO2': ['Energy and Industrial Processes', 'Energy', 'Industrial Processes',
@@ -46,12 +57,32 @@ other_vars = ['Primary Energy', 'Secondary Energy|Electricity',
 all_vars_names = [parent+"|"+subvar
                     for parent in parentvar_to_subvar.keys()
                   for subvar in parentvar_to_subvar[parent]] + other_vars
-all_vars_names
 
+useful_data = year_data[year_data["variable"].isin(all_vars_names)]
 # %%
-# print(all_data["Variable"])
-useful_data = all_data[all_data["Variable"].isin(all_vars_names)]
-# useful_data.shape
-useful_data
+# merging data and metadata
+data = useful_data.merge(scenarios_meta, how="left", on="model-scenario")
+data = data.loc[data["variable"].isin(["Emissions|Kyoto Gases",
+                                "Emissions|CO2|Energy and Industrial Processes",
+                                "GDP|PPP", "Emissions|CO2|Energy|Supply|Electricity",
+                                "Secondary Energy|Electricity", "Emissions|CO2|Energy|Demand|Transportation"])]
+# data["model-scenario"]
 # %%
+# calculate Anual Reduction
+# tweakable
+start_year = 2020
+last_year = 2050
+interval_ = 5
+
+column_years_to_consider = list(range(start_year, last_year, interval_))
+
+# create AR column
+# data["anual_reduction"] =
+
+
+
+# split in 3rds by policy (carbon price) and by tech (cdr something)
+
+# regress scenario-model + LAR to senario-model + temp66 
+
 
