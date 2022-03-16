@@ -34,6 +34,18 @@ use_etp <- FALSE
 write_csvs <- TRUE
 
 # 2. Library =================================================================================
+
+install.packages(plyr)
+install.packages(dplyr)
+install.packages(readr)
+install.packages(zeallot)
+install.packages(futile.logger)
+install.packages(magrittr)
+install.packages(ggplot2)
+install.packages(openxlsx)
+install.packages(reshape2)
+install.packages(tidyr)
+
 library(plyr)
 library(dplyr)
 library(readr)
@@ -50,13 +62,14 @@ library(tidyr)
 # 3.1 Data loading functions =================================================================
 get.SR15.meta <- function() {
   # Get SR15 metadata for merge with output df
-  
+
   meta <- (read.xlsx(f_sr15_meta, sheet='meta') %>%
              mutate(`Model-Scenario` = paste(model, scenario, sep='-')) %>%
              select(-c(1:3))
   )
   return(meta)
 }
+
 
 # above function takes the meta sheet from the metadata excel file,
 # combines models and scenarios to a single string
@@ -69,29 +82,29 @@ get.all.data <- function(refresh, all_regions=FALSE) {
   # refresh (bool): if FALSE, get.all.data will use the existing sr15_all_data variable
   # in environment if available. Otherwise, pulls fresh from xlsx
   # all_regions (bool): if TRUE, pulls from regions xlsx. Otherwise, pulls world data
-  
+
   if(!all_regions) {
     if(!exists("sr15_all_data") | refresh) {
       flog.debug('Pulling SR15 world data from Excel')
-      
+
       sr15_all_data <- read.xlsx(f_sr15, 2)
       # Make model-scenario column to match with scenarios in SBTi scenario file
       sr15_ms <- paste(sr15_all_data$Model, sr15_all_data$Scenario, sep='-')
       sr15_all_data <- cbind(sr15_all_data, sr15_ms)
       colnames(sr15_all_data)[ncol(sr15_all_data)] <- "Model-Scenario"
     } else {flog.debug('Using existing sr_15_all_data var in environment')}
-    return(sr15_all_data) 
+    return(sr15_all_data)
   } else {
     if(!exists("sr15_all_regions_all_data") | refresh) {
       flog.debug('Pulling SR15 all regions data from Excel')
-      
+
       sr15_all_regions_all_data <- read.xlsx(f_sr15_all_regions, 2)
       # Make model-scenario column to match with scenarios in SBTi scenario file
       sr15_ms <- paste(sr15_all_regions_all_data$Model, sr15_all_regions_all_data$Scenario, sep='-')
       sr15_all_regions_all_data <- cbind(sr15_all_regions_all_data, sr15_ms)
       colnames(sr15_all_regions_all_data)[ncol(sr15_all_regions_all_data)] <- "Model-Scenario"
     } else{flog.debug('Using existing sr_15_all_regions_all_data var in environment')}
-    return(sr15_all_regions_all_data) 
+    return(sr15_all_regions_all_data)
   }
 }
 
@@ -122,11 +135,11 @@ interp.all <- function(df, id.cols=5, cdata_yrs_out=FALSE) {
   # a dataframe of "keystone years," i.e., for each row, which years are
   # reported data and which are interpolated. If FALSE, function just returns
   # df of interpolated data
-  
-  
+
+
   int_df <- matrix(0, nrow(df), length(c(2000:2100)))
   cd_out <- matrix(0, nrow(df), length(c(2000:2100)))
-  
+
   for(i in 1:nrow(df)) {
     # Row index to write to
     data_yrs <- colnames(df[i,])[!is.na(df[i,])]
@@ -135,7 +148,7 @@ interp.all <- function(df, id.cols=5, cdata_yrs_out=FALSE) {
       if(is.numeric(x0)) {return(x0)} else {return(NULL)}
     }))
     cdata_yrs <- as.character(data_yrs)
-    
+
     for(k in 2000:2100) {
       yr_col <- as.character(k)
       if(yr_col %in% cdata_yrs) {
@@ -150,23 +163,23 @@ interp.all <- function(df, id.cols=5, cdata_yrs_out=FALSE) {
         int_data <- (
           df[i, as.character(back_yr)] +
             (int_yr/n_yrs) * (df[i, as.character(forward_yr)] - df[i, as.character(back_yr)]))
-        
+
         if(length(int_data) != 0 & length(int_data) != 1) {
           print(df[i])
           print(int_data)
         }
-        
+
         if(length(int_data) == 0) {
           int_df[i, k-1999] <- NA
         } else{
-          int_df[i, k-1999] <- int_data}                                           
+          int_df[i, k-1999] <- int_data}
       }
-      
+
     }
   }
-  
+
   if(id.cols >1) {
-    int_df <- bind_cols(df[,c(1:id.cols)], as.data.frame(int_df)) 
+    int_df <- bind_cols(df[,c(1:id.cols)], as.data.frame(int_df))
   } else {
     int_df <- cbind(df[,1], as.data.frame(int_df))
     colnames(int_df)[1] <- colnames(df)[1]
@@ -175,7 +188,7 @@ interp.all <- function(df, id.cols=5, cdata_yrs_out=FALSE) {
   if(cdata_yrs_out) {
     return(list(int_df, cd_out))
   } else {
-    return(int_df) 
+    return(int_df)
   }
 }
 
@@ -185,7 +198,7 @@ interp.all <- function(df, id.cols=5, cdata_yrs_out=FALSE) {
 calculate.AFOLU.cs <- function(df) {
   # Add a column estimating land use-related carbon sequestration due to
   # poor reporting of 'Carbon Sequestration|Land Use' in SR15 database
-  
+
   mutate(df,
          `Carbon Sequestration|Land Use2` = case_when(
            `Emissions|CO2|AFOLU` < 0 ~ -`Emissions|CO2|AFOLU`,
@@ -201,14 +214,14 @@ calculate.CDR <- function(df) {
   # the scenario. Note that this does not include CO2 captured at the point of emissions,
   # e.g., fossil CCS, it is strictly focused on net negative CO2 via the definition
   # in SR15 Figure 2.10
-  
+
   CDR_subs <- c('CCS|Biomass', 'Land Use2', 'Feedstocks',
                 'Direct Air Capture', 'Enhanced Weathering', 'Other')
   all_CDR <- generate.varnames('Carbon Sequestration', CDR_subs, FALSE)
   all_CDR <- all_CDR[all_CDR %in% colnames(df)]
-  
+
   df[,all_CDR][is.na(df[,all_CDR])] <- 0
-  
+
   df$cdr <- apply(df, 1, function(X) {
     sum(as.numeric(X[all_CDR]))
   })
@@ -216,11 +229,11 @@ calculate.CDR <- function(df) {
 }
 
 # CDR -> Carbon Dioxide Removal
-# function basically sums up all CDR from different 
+# function basically sums up all CDR from different
 # "areas" such as Biomass, Land Use etc. into one CDR variables
 
 calculate.intensity.vars <- function(df, use_etp) {
-  
+
   df_out <- (df %>% mutate(
     INT.emKyoto_gdp=`Emissions|Kyoto Gases`/`GDP|PPP`,
     INT.emCO2EI_PE=`Emissions|CO2|Energy and Industrial Processes`/`Primary Energy`,
@@ -228,7 +241,7 @@ calculate.intensity.vars <- function(df, use_etp) {
     INT.emCO2EI_elecGen = `Emissions|CO2|Energy and Industrial Processes`/`Secondary Energy|Electricity`,
     INT.emCO2Transport_gdp = `Emissions|CO2|Energy|Demand|Transportation`/`GDP|PPP`
   ))
-  
+
   if(use_etp) {
     df_out <- (df_out %>% mutate(
       INT.emCO2EI_cement = `Emissions|CO2|Energy and Industrial Processes`/`Cement`,
@@ -248,15 +261,15 @@ calculate.intensity.vars <- function(df, use_etp) {
 
 # 3.3 New meta-data ==========================================================================
 calculate.new.meta <- function(df, slope_vars, slope_year_pairs) {
-  
+
   df[, c("cdr|cumulative")] <- NA
-  
+
   for(si in unique(df$`Model-Scenario`)) {
     df[df$`Model-Scenario` == si, "cdr|cumulative"] <- (
       sum(df[df$`Model-Scenario` == si, "cdr"], na.rm = TRUE))
     df[df$`Model-Scenario` == si, "cdr|max"] <- (
       max(df[df$`Model-Scenario` == si, "cdr"], na.rm = TRUE))
-    
+
     if(is.na(df[df$`Model-Scenario` == si & df$Year == 2030, "Emissions|Kyoto Gases"])) {
       df[df$`Model-Scenario` == si, "Year of max Kyoto emissions"] <- NA
     } else {
@@ -265,9 +278,9 @@ calculate.new.meta <- function(df, slope_vars, slope_year_pairs) {
       df[df$`Model-Scenario` == si, "Emissions|Kyoto Gases"] == max(
           df[df$`Model-Scenario` == si, "Emissions|Kyoto Gases"], na.rm=T
         ) & !is.na(df[df$`Model-Scenario` == si, "Emissions|Kyoto Gases"])])
-      
+
     }
-    
+
     if(is.na(df[df$`Model-Scenario` == si & df$Year == 2030, "Emissions|CO2|Energy and Industrial Processes"])) {
       df[df$`Model-Scenario` == si, "Year of max EI CO2 emissions"] <- NA
     } else {
@@ -278,7 +291,7 @@ calculate.new.meta <- function(df, slope_vars, slope_year_pairs) {
           ) & !is.na(df[df$`Model-Scenario` == si, "Emissions|CO2|Energy and Industrial Processes"])])
     }
   }
-  
+
   return(df)
 }
 
@@ -291,7 +304,7 @@ generate.varnames <- function(var0, subvars, include.var0=TRUE) {
   # var0 (character): 'Parent' var, e.g. 'Emissions|CO2'
   # subvars (chr vector): 'Child' vars, e.g., c('Energy|Supply', 'Energy|Demand')
   # include.var0 (bool): whether or not to include var0 w/o any subvars in return
-  
+
   subvars <- sapply(subvars, function(vi)paste(var0, '|', vi, sep=''),
                     USE.NAMES=FALSE)
   if(include.var0) {
@@ -299,11 +312,11 @@ generate.varnames <- function(var0, subvars, include.var0=TRUE) {
   } else {
     var_all <- subvars
   }
-  
+
   return(var_all)
 }
 
-# this function just adds together the variable names of 
+# this function just adds together the variable names of
 # subvars maybe adding the parent variable name before
 
 # I think all the code above is just defining formulas that are now used in the script part
@@ -392,10 +405,10 @@ if(use_etp) {
   # Now merge them. We are dropping "Model-Scenario" from the ETP dataframe because
   # it is being combined with SR15 scenario data to estimate intensity of certain
   # industrial sectors
-  
+
   interp_data <- (interp_sr15_data
                   %>% merge(interp_etp_data[, -c(1:3)], by='Year'))
-  
+
 } else {
   interp_data <- (interp_sr15_data)
 }
@@ -440,18 +453,18 @@ byr_data <- sr15_var_long[, as.character(slope_byr)]
 
 # Loop through each final year of slope calculation
 for(i in c(1:length(slope_colsLinear))) {
-  
+
   # Get column names to be filled
   c(colL, colCA) %<-% c(all_slope_cols[[1]][i], all_slope_cols[[2]][i])
   # Final year of slope calculation in loop
   slope_yrf <- slope_yrf_all[i]
   # Pull data for final year of slope calculation in loop
   yrf_data <- sr15_var_long[, as.character(slope_yrf)]
-  
+
   # Calculate linear reduction and comoound reduction
   sr15_var_long[, colL] <- 100 * (yrf_data - byr_data)/byr_data/(slope_yrf-slope_byr)
   sr15_var_long[, colCA] <- 100 * ((yrf_data/byr_data)^(1/(slope_yrf-slope_byr))-1)
-  
+
   # Replace with NA if infinite or over 1000% growth
   sr15_var_long[, colL][is.infinite(sr15_var_long[, colL]) | sr15_var_long[, colL] > 1000] <- NA
   sr15_var_long[, colCA][is.infinite(sr15_var_long[, colL]) | sr15_var_long[, colL] > 1000] <- NA
@@ -495,26 +508,26 @@ for(pi in which_peak_var){
       for(peak_yr in latest_peak) {
         # this we want 
         for(cdr_val in min_co2) {
-          
+
           counter <- counter + 1
           if(length(ai) > 4) {
             pscenarios <- '1.5C and 2C'
           } else if(length(ai) > 3){
-            
+
             pscenarios <- '1.5C and lower 2C'} else {
               pscenarios <- '1.5C'
           }
-          
+
           set_name <- paste0(pi,' for ', pscenarios, ' scenarios: ', peak_yr,
                             '. CDR less than ', -cdr_val, ' GT CO2/yr based on ', ci)
-          
+
           peak_yrv[counter] <- peak_yr
           peak_varv[counter] <- pi
           appliedv[counter] <- pscenarios
           cdr_limv[counter] <- ci
           cdr_varv[counter] <- cdr_val
-          
-          
+
+
           if(ci == 'cdr|max') {
             filtered_dfi <- sr15_prefilter %>% filter(
               ((!! rlang::sym(pi) <= peak_yr) & (`cdr|max` <= -cdr_val*1000) & (category %in% ai)) |
@@ -524,16 +537,16 @@ for(pi in which_peak_var){
               ((!! rlang::sym(pi) <= peak_yr) & (`minimum.net.CO2.emissions.(Gt.CO2/yr)` >= cdr_val) & (category %in% ai)) |
                  ((`minimum.net.CO2.emissions.(Gt.CO2/yr)` >= cdr_val) & (!category %in% ai)))
           }
-          
+
           filtered_dfs[[counter]] <- filtered_dfi
           names(filtered_dfs)[counter] <- set_name
           # print(length(unique(filtered_dfi$`Model-Scenario`)))
           nscenariosv[counter] <- length(unique(filtered_dfi$`Model-Scenario`))
           if(write_csvs) {
-            write_excel_csv(filtered_dfi, path=paste0('TROPICS-scenario_data_csv/TROPICS_dataset-', counter, '.csv')) 
+            write_excel_csv(filtered_dfi, path=paste0('TROPICS-scenario_data_csv/TROPICS_dataset-', counter, '.csv'))
           }
         }
-      }   
+      }
     }
   }
 }
@@ -544,8 +557,3 @@ mapping <- cbind(names(filtered_dfs), peak_yrv, peak_varv, appliedv, cdr_limv,
 if(write_csvs) {
   write.xlsx(mapping, 'TROPICS-scenario_data_csv/TROPICS_dataset_mapping.xlsx')
 }
-
-
-
-
-
