@@ -2,6 +2,10 @@
 import pandas as pd
 import numpy as np
 import patsy as ps
+import matplotlib.pyplot as plt
+
+from email.mime import base
+from scipy import stats
 
 scenario_data_path_xls = "./input_data/iamc15_scenario_data_world_r2.0.xlsx"
 scenario_data_path = "./input_data/iamc15_scenario_data_world_r2.0.csv"
@@ -69,20 +73,77 @@ data = data.loc[data["variable"].isin(["Emissions|Kyoto Gases",
 # data["model-scenario"]
 # %%
 # calculate Anual Reduction
+def calculate_lar_by_two_points(base_year, target_year, val_base_year, val_target_year, show_=False):
+    if show_:
+        X = [base_year, target_year]
+        y = [val_base_year, val_target_year]
+        plt.scatter(X, y)
+        plt.plot(X, y)
+        plt.show()
+    # return 100 * (val_target_year - val_base_year) / val_base_year / (target_year - base_year)
+    return 100 * (val_base_year - val_target_year) / val_base_year / (target_year - base_year)
+
+
+def calculate_aggragated_lar(year_range, values_):
+    # values_ = list(reversed(values_))
+    slope, intercept, r, p, se = stats.linregress(year_range, values_)
+    print(values_)
+
+    print(slope)
+    print(intercept)
+
+
+    base_year = year_range[0]
+    target_year = year_range[-1]
+
+    val_base_year = base_year * slope + intercept
+    val_target_year = target_year * slope + intercept
+
+    X = year_range
+    y = values_
+    get_val = lambda v: v * slope + intercept
+    y_pred = [get_val(v) for v in year_range]
+    print(y_pred)
+    plt.scatter(X, y)
+    plt.plot(X, y_pred)
+    plt.show()
+    # return 1
+    return calculate_lar_by_two_points(base_year, target_year, val_base_year, val_target_year)
+
+
+
 # tweakable
 start_year = 2020
 last_year = 2050
 interval_ = 5
 
-column_years_to_consider = list(range(start_year, last_year, interval_))
+column_years_to_consider = list(range(start_year, last_year+5, interval_))
 
+test = data.iloc[100][[str(y) for y in column_years_to_consider]]
+
+lar1 = calculate_lar_by_two_points(start_year, last_year, test[str(start_year)], test[str(last_year)], show_= True)
+print("LAR TWO POINTS")
+print(lar1)
+
+lar2 = calculate_aggragated_lar(
+    [y for y in column_years_to_consider], [test[str(y)] for y in column_years_to_consider])
+print("LAR Aggregated")
+print(lar2)
+
+# TODO: calculate for all data and store it
 # create AR column
 # data["anual_reduction"] =
 
+# %%
 
 
+
+
+
+#  TODOs
 # split in 3rds by policy (carbon price) and by tech (cdr something)
 
 # regress scenario-model + LAR to senario-model + temp66 
 
 
+#  %%
