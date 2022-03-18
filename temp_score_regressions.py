@@ -1,11 +1,13 @@
 #  %%
+
+import copy
 import pandas as pd
 import numpy as np
-import patsy as ps
+import itertools
+
 import matplotlib.pyplot as plt
 
-from email.mime import base
-from scipy import stats
+from scipy import stats, odr
 
 scenario_data_path_xls = "./input_data/iamc15_scenario_data_world_r2.0.xlsx"
 scenario_data_path = "./input_data/iamc15_scenario_data_world_r2.0.csv"
@@ -41,10 +43,13 @@ print(f"---- {year_data.shape[0]} out of {initial_lines} rows remained after fil
 year_data["model-scenario"] = year_data.model.map(
     str) + "-" + year_data.scenario.map(str)
 year_data = year_data.iloc[:, 2:]
+year_data = year_data.drop(columns=["region"] + [str(year) for year in range(2000, 2100) if year % 5 != 0] )
+# year_data
 
+# print_vars = list(year_data["variable"].to_numpy())
+# set([v for v in print_vars if "Carbon Sequestration" in str(v)])
 # %%
 # get only useful variables
-
 parentvar_to_subvar = {
     'Emissions|CO2': ['Energy and Industrial Processes', 'Energy', 'Industrial Processes',
                       'Energy|Supply', 'Energy|Demand', 'Energy|Demand|Industry', 'Energy|Demand|Transportation',
@@ -59,38 +64,163 @@ other_vars = ['Primary Energy', 'Secondary Energy|Electricity',
               'Carbon Sequestration|CCS|Biomass|Energy|Supply|Electricity', 'GDP|PPP']
 
 all_vars_names = [parent+"|"+subvar
-                    for parent in parentvar_to_subvar.keys()
+                  for parent in parentvar_to_subvar.keys()
                   for subvar in parentvar_to_subvar[parent]] + other_vars
 
 useful_data = year_data[year_data["variable"].isin(all_vars_names)]
+# useful_data[useful_data["variable"] == "Emissions|Kyoto Gases"]
+#  %%
+# create new target variables for each model-scenario
+
+# we cannot find 'Feedstocks' :)
+cdr_variables = ['Carbon Sequestration|CCS|Biomass', 'Carbon Sequestration|Land Use',
+                 'Carbon Sequestration|Direct Air Capture', 'Carbon Sequestration|Enhanced Weathering',
+                 'Carbon Sequestration|CCS|Biomass|Energy|Supply|Other', "Carbon Sequestration|CCS|Fossil|Energy|Supply|Other"
+                 ]
+
+crucial_variables = ["Emissions|Kyoto Gases", "GDP|PPP", "Emissions|CO2|Energy|Supply|Electricity",
+                     "Emissions|CO2|Energy and Industrial Processes", "Secondary Energy|Electricity",
+                     "Emissions|CO2|Energy|Demand|Transportation"
+                    ]
+
+
+
+# INT.emKyoto_gdp -> Emissions|Kyoto Gases / GDP|PPP
+# INT.emCO2Elec_elecGen -> Emissions|CO2|Energy|Supply|Electricity / Secondary Energy|Electricity
+# INT.emCO2EI_elecGen -> Emissions|CO2|Energy and Industrial Processes / Secondary Energy|Electricity
+# INT.emCO2Transport_gdp -> Emissions|CO2|Energy|Demand|Transportation / GDP|PPP
+
+
+
+
+
+new_variables_df = pd.DataFrame()
+remaining_scenarios = 0
+for name, df in useful_data.groupby("model-scenario"):
+    intersection_ = set(df["variable"]).intersection(set(crucial_variables))
+ 
+    if intersection_ != set(crucial_variables):
+        continue
+    
+    remaining_scenarios += 1
+
+    # new temporary structure
+    temp_df = pd.DataFrame(columns=df.columns)
+    row_ = {k:np.nan for k in df.columns}
+    row_["model-scenario"] = name
+
+    
+    # create new variables by division | spaghetti code
+    # Kyoto per GDP
+    kyoto_gases = df.loc[df["variable"] == "Emissions|Kyoto Gases", [str(year) for year in range(2000, 2105, 5)]].to_numpy()[0]
+    gdp = df.loc[df["variable"] == "GDP|PPP", [str(year) for year in range(2000, 2105, 5)]].to_numpy()[0]
+    kyto_per_gdp = kyoto_gases / gdp
+    row_["variable"] = "Emissions Kyoto per GDP"
+    row_["unit"] = str(df.loc[df["variable"] == "Emissions|Kyoto Gases", "unit"].values[0]) + "/" + \
+        str(df.loc[df["variable"] == "GDP|PPP", "unit"].values[0])
+    for c in set(df.columns).difference(set(["variable", "unit", "model-scenario"])):
+        array_index = int(c) % 2000 // 5  
+        row_[c] = kyto_per_gdp[array_index]
+    
+    temp_df = temp_df.append(row_, ignore_index=True)
+
+    # Emission from Electricity per Generated Electricity
+    electricity_supply = df.loc[df["variable"] == "Emissions|CO2|Energy|Supply|Electricity", [str(year) for year in range(2000, 2105, 5)]].to_numpy()[0]
+    secondary_electricity = df.loc[df["variable"] == "Secondary Energy|Electricity", [
+        str(year) for year in range(2000, 2105, 5)]].to_numpy()[0]
+    electricity_ratio = electricity_supply / secondary_electricity
+    row_["variable"] = "Emissions Electricity per Secondary Electricity"
+    row_["unit"] = str(df.loc[df["variable"] == "Emissions|CO2|Energy|Supply|Electricity", "unit"].values[0]) + "/" + \
+        str(df.loc[df["variable"] ==
+            "Secondary Energy|Electricity", "unit"].values[0])
+    for c in set(df.columns).difference(set(["variable", "unit", "model-scenario"])):
+        array_index = int(c) % 2000 // 5  
+        row_[c] = electricity_ratio[array_index]
+    
+    temp_df = temp_df.append(row_, ignore_index=True)
+
+    # Energy & Industrial Processes per Generated Electricty
+    energy_and_industry_processes = df.loc[df["variable"] == "Emissions|CO2|Energy and Industrial Processes", [
+        str(year) for year in range(2000, 2105, 5)]].to_numpy()[0]
+    energy_industry_process_ratio = energy_and_industry_processes / secondary_electricity
+    row_["variable"] = "Emissions Energy & Industrial Processes per Secondary Electricity"
+    row_["unit"] = str(df.loc[df["variable"] == "Emissions|CO2|Energy and Industrial Processes", "unit"].values[0]) + "/" + \
+        str(df.loc[df["variable"] ==
+            "Secondary Energy|Electricity", "unit"].values[0])
+    for c in set(df.columns).difference(set(["variable", "unit", "model-scenario"])):
+        array_index = int(c) % 2000 // 5
+        row_[c] = energy_industry_process_ratio[array_index]
+
+    temp_df = temp_df.append(row_, ignore_index=True)
+
+    # Emissions from Transportation per GDP
+    transportation = df.loc[df["variable"] == "Emissions|CO2|Energy|Demand|Transportation", [
+        str(year) for year in range(2000, 2105, 5)]].to_numpy()[0]
+    trasportation_per_gdp = transportation / gdp
+    row_["variable"] = "Emissions Transportation per GDP"
+    row_["unit"] = str(df.loc[df["variable"] == "Emissions|CO2|Energy|Demand|Transportation", "unit"].values[0]) + "/" + \
+        str(df.loc[df["variable"] ==
+            "GDP|PPP", "unit"].values[0])
+    for c in set(df.columns).difference(set(["variable", "unit", "model-scenario"])):
+        array_index = int(c) % 2000 // 5
+        row_[c] = trasportation_per_gdp[array_index]
+
+    temp_df = temp_df.append(row_, ignore_index=True)
+    
+    # create CDR variable by summing
+    # ? the units of the summed variables should be the same; should be :)
+    cdr_values = np.array([0.0 for _ in  range(2000, 2105, 5)])
+    for cdr_var in cdr_variables:
+        if cdr_var not in df["variable"].to_numpy():
+            continue
+        cdr_values += df.loc[df["variable"] == cdr_var, [str(year) for year in range(2000, 2105, 5)]].to_numpy()[0]
+
+    row_["variable"] = "CDR"
+    row_["unit"] = "Mt CO2/yr"
+    for c in set(df.columns).difference(set(["variable", "unit", "model-scenario"])):
+        array_index = int(c) % 2000 // 5
+        row_[c] = cdr_values[array_index]
+    temp_df = temp_df.append(row_, ignore_index=True)
+
+    new_variables_df = pd.concat([new_variables_df, temp_df])
+
+    
+concat_data = pd.concat([useful_data, new_variables_df])
+# %%
+# make CDR a column (cumulative CDR & max CDR)
+tmp_data = concat_data.loc[concat_data["variable"] == "CDR"]
+model_scenario, cdr_sums, cdr_maxs = tmp_data["model-scenario"], tmp_data[[str(year) for year in range(2000, 2105, 5)]].sum(axis=1).to_list(), tmp_data[[str(year) for year in range(2000, 2105, 5)]].max(axis=1).to_list()
+
+cdr_df = pd.DataFrame({"model-scenario": model_scenario, "Cumulative CDR": cdr_sums, "Max CDR": cdr_maxs})
+
+
+concat_data = pd.merge(concat_data, cdr_df, on="model-scenario", how="left")
+
 # %%
 # merging data and metadata
-data = useful_data.merge(scenarios_meta, how="left", on="model-scenario")
+data = concat_data.merge(scenarios_meta, how="left", on="model-scenario")
 data = data.loc[data["variable"].isin(["Emissions|Kyoto Gases",
                                 "Emissions|CO2|Energy and Industrial Processes",
-                                "GDP|PPP", "Emissions|CO2|Energy|Supply|Electricity",
-                                "Secondary Energy|Electricity", "Emissions|CO2|Energy|Demand|Transportation"])]
-# data["model-scenario"]
+                                "Emissions Kyoto per GDP", "Emissions Electricity per Secondary Electricity",
+                                "Emissions Energy & Industrial Processes per Secondary Electricity",
+                                "Emissions Transportation per GDP"
+                               ])]
+# data
 # %%
 # calculate Anual Reduction
-def calculate_lar_by_two_points(base_year, target_year, val_base_year, val_target_year, show_=False):
-    if show_:
-        X = [base_year, target_year]
-        y = [val_base_year, val_target_year]
-        plt.scatter(X, y)
-        plt.plot(X, y)
-        plt.show()
+def calculate_lar_by_two_points(base_year, target_year, val_base_year, val_target_year):
+    # just pctage of change
     # return 100 * (val_target_year - val_base_year) / val_base_year / (target_year - base_year)
-    return 100 * (val_base_year - val_target_year) / val_base_year / (target_year - base_year)
+    # real reduction
+    return 100 * (val_base_year - val_target_year) / abs(val_base_year) / (target_year - base_year)
 
 
-def calculate_aggragated_lar(year_range, values_):
+def calculate_aggragated_lar(year_range, values_, show_ = False):
     # values_ = list(reversed(values_))
     slope, intercept, r, p, se = stats.linregress(year_range, values_)
-    print(values_)
 
-    print(slope)
-    print(intercept)
+    # print(slope)
+    # print(intercept)
 
 
     base_year = year_range[0]
@@ -103,11 +233,13 @@ def calculate_aggragated_lar(year_range, values_):
     y = values_
     get_val = lambda v: v * slope + intercept
     y_pred = [get_val(v) for v in year_range]
-    print(y_pred)
-    plt.scatter(X, y)
-    plt.plot(X, y_pred)
-    plt.show()
-    # return 1
+    if show_:
+        print(values_)
+        print(y_pred)
+        plt.scatter(X, y)
+        plt.plot(X, y_pred, color="black")
+        plt.plot([base_year, target_year], [values_[0], values_[-1]], color="red")
+        plt.show()
     return calculate_lar_by_two_points(base_year, target_year, val_base_year, val_target_year)
 
 
@@ -119,31 +251,113 @@ interval_ = 5
 
 column_years_to_consider = list(range(start_year, last_year+5, interval_))
 
-test = data.iloc[100][[str(y) for y in column_years_to_consider]]
+test = data.iloc[1][[str(y) for y in column_years_to_consider]]
 
-lar1 = calculate_lar_by_two_points(start_year, last_year, test[str(start_year)], test[str(last_year)], show_= True)
+lar1 = calculate_lar_by_two_points(start_year, last_year, test[str(start_year)], test[str(last_year)])
 print("LAR TWO POINTS")
 print(lar1)
 
 lar2 = calculate_aggragated_lar(
-    [y for y in column_years_to_consider], [test[str(y)] for y in column_years_to_consider])
-print("LAR Aggregated")
+    [y for y in column_years_to_consider], [test[str(y)] for y in column_years_to_consider], show_= True)
+print("LAR ADJUSTED")
 print(lar2)
 
-# TODO: calculate for all data and store it
+# check types
+# print([type(d) for d in data.columns])
+
 # create AR column
-# data["anual_reduction"] =
+data["LAR"] = data.apply(lambda row_: calculate_aggragated_lar([y for y in column_years_to_consider],
+                                                              [row_[str(y)] for y in column_years_to_consider]), axis=1)
+
+
+# data["model-scenario"]
 
 # %%
+# split in 3rds by policy (carbon price|Avg NPV (2030-2100)) and by technology (CDR)
+
+def map_number_to_meaning(n):
+    if n == 1:
+        return "low"
+    if n == 2:
+        return "medium"
+    if n == 3:
+        return "high"
+    # this should not be reached
+    return None
+
+
+data = data.dropna(subset=["carbon price|Avg NPV (2030-2100)"])
+chosen_cdr_column = "Cumulative CDR"
+# chosen_cdr_column = "Max CDR"
+data = data.dropna(subset=[chosen_cdr_column])
+# print(data["carbon price|Avg NPV (2030-2100)"].to_list())
+
+policy_data = copy.deepcopy(data)
+technology_data = copy.deepcopy(data)
+
+policy_data = policy_data.sort_values(by="carbon price|Avg NPV (2030-2100)")
+policy_buckets = np.array_split(policy_data, 3)
+
+technology_data = technology_data.sort_values(by=chosen_cdr_column)
+technology_buckets = np.array_split(technology_data, 3)
+
+
+filters = {}
+
+for policy_idx, technology_idx in itertools.product(range(3), range(3)):
+    policy_df = policy_buckets[policy_idx]
+    technology_df = technology_buckets[technology_idx]
+    intersection_df = pd.merge(policy_df, technology_df, on=list(policy_df.columns), how="inner")
+    print((map_number_to_meaning(policy_idx+1), map_number_to_meaning(technology_idx+1)))
+    print(intersection_df.shape)
+    filters[(map_number_to_meaning(policy_idx+1), map_number_to_meaning(technology_idx+1))] = intersection_df
 
 
 
+#  %%
+# sanity test
+print(filters[("medium", "low")]["model-scenario"])
+#  %%
+# regress scenario-model - var LAR to senario-model - temp66 
+
+def run_regression(X, y, type_="linear"):
+    
+    if type_ == "linear":
+        slope, intercept, r, p, se = stats.linregress(X, y)
+
+        y_ = slope * X + intercept
+        plt.scatter(X, y)
+        plt.plot(X, y_, color="red")
+        plt.show()
+    
+    if type_ == "poly":
+        polymodel = odr.polynomial(3)
+        data = odr.Data(X, y)
+        poly_X = np.linspace(np.min(X), np.max(X))
+        odr_object = odr.ODR(data, polymodel)
+        output = odr_object.run()
+        poly = np.poly1d(output.beta[::-1])
+        y_ = poly(poly_X)
+        plt.scatter(X, y)
+        plt.plot(poly_X, y_, color="red")
+        plt.show()
 
 
-#  TODOs
-# split in 3rds by policy (carbon price) and by tech (cdr something)
 
-# regress scenario-model + LAR to senario-model + temp66 
+user_policy = "low"
+user_technology = "high"
+
+variable_to_regress = "Emissions|Kyoto Gases"
+
+lar_df = filters[(user_policy, user_technology)].loc[:, ["model-scenario", "LAR"]]
+temp66 = temp66.rename(columns={"concscen2": "model-scenario"})
+
+regression_df = pd.merge(lar_df, temp66, on="model-scenario", how="left")
+regression_df = regression_df.dropna(subset=["LAR"])
+
+run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_="poly")
+
+
 
 
 #  %%
