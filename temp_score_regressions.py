@@ -4,10 +4,11 @@ import copy
 import pandas as pd
 import numpy as np
 import itertools
+from sklearn.metrics import r2_score
 
 import matplotlib.pyplot as plt
 
-from scipy import stats, odr
+from scipy import stats
 
 scenario_data_path_xls = "./input_data/iamc15_scenario_data_world_r2.0.xlsx"
 scenario_data_path = "./input_data/iamc15_scenario_data_world_r2.0.csv"
@@ -292,6 +293,15 @@ chosen_cdr_column = "Cumulative CDR"
 data = data.dropna(subset=[chosen_cdr_column])
 # print(data["carbon price|Avg NPV (2030-2100)"].to_list())
 
+print("*"*50)
+
+print("min LAR", data["LAR"].min())
+
+print("max LAR",  data["LAR"].max())
+
+print("*"*50)
+
+
 policy_data = copy.deepcopy(data)
 technology_data = copy.deepcopy(data)
 
@@ -320,7 +330,14 @@ print(filters[("medium", "low")]["model-scenario"])
 #  %%
 # regress scenario-model - var LAR to senario-model - temp66 
 
-def run_regression(X, y, type_="linear"):
+# maybe json
+# choose best poly degree based on r2
+# df --> policy, technology, linear, poly-n_to_4/5
+# policy = ["low", "medium", "high"]
+# tech = ["low", "medium", "high"] 
+
+# plug LAR to equation ( in the backend )
+def run_regression(X, y, type_="linear", poly_degree = 3):
     
     if type_ == "linear":
         slope, intercept, r, p, se = stats.linregress(X, y)
@@ -329,35 +346,82 @@ def run_regression(X, y, type_="linear"):
         plt.scatter(X, y)
         plt.plot(X, y_, color="red")
         plt.show()
+        return (slope, intercept)
+    
     
     if type_ == "poly":
-        polymodel = odr.polynomial(3)
-        data = odr.Data(X, y)
-        poly_X = np.linspace(np.min(X), np.max(X))
-        odr_object = odr.ODR(data, polymodel)
-        output = odr_object.run()
-        poly = np.poly1d(output.beta[::-1])
-        y_ = poly(poly_X)
+
+        my_model = np.poly1d(np.polyfit(X, y, poly_degree))
+        #print("output of polynomial " , my_model)
+
+        my_line = np.linspace(np.min(X)-1, np.max(X)+1)
+
+        limits = (np.min(X), np.max(X))
+
+
+        # polymodel = odr.polynomial(poly_degree)
+        # data = odr.Data(X, y)
+        # poly_X = np.linspace(np.min(X), np.max(X))
+        # odr_object = odr.ODR(data, polymodel)
+        # output = odr_object.run()
+        # poly = np.poly1d(output.beta[::-1])
+        # y_ = poly(poly_X)
+
+        #y_ = my_model(X)
+
         plt.scatter(X, y)
-        plt.plot(poly_X, y_, color="red")
+
+        plt.plot(my_line, my_model(my_line), color="red")
+
         plt.show()
+
+        r2 = r2_score(y, my_model(X))
+
+        print(f"R2: {r2}, polynomial degree: {poly_degree}")
+        print(f"Min: {limits[0]}, Max: {limits[1]}")
+        return (my_model)
 
 
 
 user_policy = "low"
 user_technology = "high"
 
+policy = ["low", "medium", "high"]
+tech = ["low", "medium", "high"]
 variable_to_regress = "Emissions|Kyoto Gases"
 
-lar_df = filters[(user_policy, user_technology)].loc[:, ["model-scenario", "LAR"]]
-temp66 = temp66.rename(columns={"concscen2": "model-scenario"})
+results = pd.DataFrame(columns=["policy", "technology", "linear", "poly"])
 
-regression_df = pd.merge(lar_df, temp66, on="model-scenario", how="left")
-regression_df = regression_df.dropna(subset=["LAR"])
+#results = pd.DataFrame({"policy" : None, "technology" : None, "linear" : None, "poly" : None})
 
-run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_="poly")
+idx = 0
+for user_policy, user_technology in itertools.product(policy, tech):
+    print(f"user policy: {user_policy}, user_tech: {user_technology}")
+    results.loc[idx, "policy"] = user_policy
+    results.loc[idx, "technology"] = user_technology
+
+
+    lar_df = filters[(user_policy, user_technology)].loc[:, ["model-scenario", "LAR"]]
+    temp66 = temp66.rename(columns={"concscen2": "model-scenario"})
+
+    regression_df = pd.merge(lar_df, temp66, on="model-scenario", how="left")
+    regression_df = regression_df.dropna(subset=["LAR"])
+
+    for type_ in ["linear", "poly"]:
+        output = run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_=type_)
+        results.loc[idx, type_] = output
+
+    # lets append to results dataframe
+    idx += 1
 
 
 
+    # poly_degrees = [3,4,5]
+    # for poly_degree in poly_degrees:
+    #     r2 = run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_="poly", poly_degree=poly_degree)
+
+print("*"*50)
+print(results["poly"][0])
 
 #  %%
+results.to_json( "" , index = False)
