@@ -254,14 +254,14 @@ column_years_to_consider = list(range(start_year, last_year+5, interval_))
 
 test = data.iloc[1][[str(y) for y in column_years_to_consider]]
 
-lar1 = calculate_lar_by_two_points(start_year, last_year, test[str(start_year)], test[str(last_year)])
-print("LAR TWO POINTS")
-print(lar1)
+# lar1 = calculate_lar_by_two_points(start_year, last_year, test[str(start_year)], test[str(last_year)])
+# print("LAR TWO POINTS")
+# print(lar1)
 
-lar2 = calculate_aggragated_lar(
-    [y for y in column_years_to_consider], [test[str(y)] for y in column_years_to_consider], show_= True)
-print("LAR ADJUSTED")
-print(lar2)
+# lar2 = calculate_aggragated_lar(
+#     [y for y in column_years_to_consider], [test[str(y)] for y in column_years_to_consider], show_= True)
+# print("LAR ADJUSTED")
+# print(lar2)
 
 # check types
 # print([type(d) for d in data.columns])
@@ -378,8 +378,9 @@ def run_regression(X, y, type_="linear", poly_degree = 3):
         r2 = r2_score(y, my_model(X))
 
         print(f"R2: {r2}, polynomial degree: {poly_degree}")
-        print(f"Min: {limits[0]}, Max: {limits[1]}")
-        return (my_model)
+        #print(f"Min: {limits[0]}, Max: {limits[1]}")
+        #print(my_model)
+        return (my_model[0], my_model[1], my_model[2], my_model[3])
 
 
 
@@ -420,8 +421,10 @@ for user_policy, user_technology in itertools.product(policy, tech):
     # for poly_degree in poly_degrees:
     #     r2 = run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_="poly", poly_degree=poly_degree)
 
-print("*"*50)
-print(results["poly"][0])
-
 #  %%
-results.to_json( "" , index = False)
+results.to_json("regres_coef.json")
+#results.to_csv("regres_coef.csv")
+#%%
+
+
+#%%
