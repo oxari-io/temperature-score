@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import itertools
 from sklearn.metrics import r2_score
-
+import json
 import matplotlib.pyplot as plt
 
 from scipy import stats
@@ -73,7 +73,7 @@ useful_data = year_data[year_data["variable"].isin(all_vars_names)]
 #  %%
 # create new target variables for each model-scenario
 
-# we cannot find 'Feedstocks' :)
+# we cannot find 'Feedstocks' :)))
 cdr_variables = ['Carbon Sequestration|CCS|Biomass', 'Carbon Sequestration|Land Use',
                  'Carbon Sequestration|Direct Air Capture', 'Carbon Sequestration|Enhanced Weathering',
                  'Carbon Sequestration|CCS|Biomass|Energy|Supply|Other', "Carbon Sequestration|CCS|Fossil|Energy|Supply|Other"
@@ -218,7 +218,16 @@ def calculate_lar_by_two_points(base_year, target_year, val_base_year, val_targe
 
 def calculate_aggragated_lar(year_range, values_, show_ = False):
     # values_ = list(reversed(values_))
+    # make sure that we dont use nan values to calculate LAR
+    values_ = np.array(values_)
+    idxs = np.where(np.isnan(values_))
+    values_ = np.delete(values_, idxs)
+
+    year_range = np.array(year_range)
+    year_range = np.delete(year_range, idxs)
+
     slope, intercept, r, p, se = stats.linregress(year_range, values_)
+
 
     # print(slope)
     # print(intercept)
@@ -286,11 +295,20 @@ def map_number_to_meaning(n):
     # this should not be reached
     return None
 
-
 data = data.dropna(subset=["carbon price|Avg NPV (2030-2100)"])
+
 chosen_cdr_column = "Cumulative CDR"
 # chosen_cdr_column = "Max CDR"
 data = data.dropna(subset=[chosen_cdr_column])
+
+
+# ¡uncomment whats below to select only specific variable to regress!
+# variable_to_regress = "Emissions|Kyoto Gases"
+# data = data.loc[data["variable"] == variable_to_regress]
+
+variables_to_regress = ["Emissions|Kyoto Gases", "Emissions|CO2|Energy and Industrial Processes"]
+data = data[data.variable.isin(variables_to_regress)]
+
 # print(data["carbon price|Avg NPV (2030-2100)"].to_list())
 
 print("*"*50)
@@ -330,12 +348,6 @@ print(filters[("medium", "low")]["model-scenario"])
 #  %%
 # regress scenario-model - var LAR to senario-model - temp66 
 
-# maybe json
-# choose best poly degree based on r2
-# df --> policy, technology, linear, poly-n_to_4/5
-# policy = ["low", "medium", "high"]
-# tech = ["low", "medium", "high"] 
-
 # plug LAR to equation ( in the backend )
 def run_regression(X, y, type_="linear", poly_degree = 3):
     
@@ -352,23 +364,12 @@ def run_regression(X, y, type_="linear", poly_degree = 3):
     if type_ == "poly":
 
         my_model = np.poly1d(np.polyfit(X, y, poly_degree))
-        #print("output of polynomial " , my_model)
+        print("output of polynomial " , my_model)
 
-        my_line = np.linspace(np.min(X)-1, np.max(X)+1)
+        my_line = np.linspace(np.min(X), np.max(X))
 
         limits = (np.min(X), np.max(X))
-
-
-        # polymodel = odr.polynomial(poly_degree)
-        # data = odr.Data(X, y)
-        # poly_X = np.linspace(np.min(X), np.max(X))
-        # odr_object = odr.ODR(data, polymodel)
-        # output = odr_object.run()
-        # poly = np.poly1d(output.beta[::-1])
-        # y_ = poly(poly_X)
-
-        #y_ = my_model(X)
-
+        #print(len(X))
         plt.scatter(X, y)
 
         plt.plot(my_line, my_model(my_line), color="red")
@@ -378,51 +379,49 @@ def run_regression(X, y, type_="linear", poly_degree = 3):
         r2 = r2_score(y, my_model(X))
 
         print(f"R2: {r2}, polynomial degree: {poly_degree}")
-        #print(f"Min: {limits[0]}, Max: {limits[1]}")
-        #print(my_model)
-        return (my_model[0], my_model[1], my_model[2], my_model[3])
-
-
-
-user_policy = "low"
-user_technology = "high"
+        print(f"Min: {limits[0]}, Max: {limits[1]}")
+        return [my_model[i] for i in range(poly_degree+1)]
+        #return (my_model[0], my_model[1], my_model[2], my_model[3])
 
 policy = ["low", "medium", "high"]
 tech = ["low", "medium", "high"]
-variable_to_regress = "Emissions|Kyoto Gases"
 
-results = pd.DataFrame(columns=["policy", "technology", "linear", "poly"])
+poly_chosen_degrees = [5,3,2,2,3,2,5,2,4]
 
-#results = pd.DataFrame({"policy" : None, "technology" : None, "linear" : None, "poly" : None})
-
+#results = pd.DataFrame(columns=["policy", "technology", "linear", "poly"])
+results = []
 idx = 0
 for user_policy, user_technology in itertools.product(policy, tech):
+    inner_dict = {}
     print(f"user policy: {user_policy}, user_tech: {user_technology}")
-    results.loc[idx, "policy"] = user_policy
-    results.loc[idx, "technology"] = user_technology
-
+    inner_dict["policy"] = user_policy
+    inner_dict["technology"] = user_technology
+    poly_degree = poly_chosen_degrees[idx]
+    # results.loc[idx, "policy"] = user_policy
+    # results.loc[idx, "technology"] = user_technology
 
     lar_df = filters[(user_policy, user_technology)].loc[:, ["model-scenario", "LAR"]]
+    print(len(lar_df))
     temp66 = temp66.rename(columns={"concscen2": "model-scenario"})
 
     regression_df = pd.merge(lar_df, temp66, on="model-scenario", how="left")
     regression_df = regression_df.dropna(subset=["LAR"])
-
     for type_ in ["linear", "poly"]:
-        output = run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_=type_)
-        results.loc[idx, type_] = output
+        output = run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_=type_, poly_degree=poly_degree)
+        inner_dict[type_] = output
+        #results.loc[idx, type_] = output
+    
+    results.append(inner_dict)
 
-    # lets append to results dataframe
     idx += 1
-
-
-
-    # poly_degrees = [3,4,5]
+    # poly_degrees = [2,3,4,5]
     # for poly_degree in poly_degrees:
     #     r2 = run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_="poly", poly_degree=poly_degree)
 
 #  %%
-results.to_json("regres_coef.json")
+with open("regres_coefs.json", "w") as handle:
+    json.dump(results, handle)
+#results.to_json("regres_coefs.json")
 #results.to_csv("regres_coef.csv")
 #%%
 
