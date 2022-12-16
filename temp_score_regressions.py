@@ -303,14 +303,14 @@ data = data.dropna(subset=[chosen_cdr_column])
 
 
 # ¡uncomment whats below to select only specific variable to regress!
-# variable_to_regress = "Emissions|Kyoto Gases"
-# data = data.loc[data["variable"] == variable_to_regress]
+variable_to_regress = "Emissions|Kyoto Gases"
+data = data.loc[data["variable"] == variable_to_regress]
 
-variables_to_regress = ["Emissions|Kyoto Gases", "Emissions|CO2|Energy and Industrial Processes"]
-data = data[data.variable.isin(variables_to_regress)]
+# variables_to_regress = ["Emissions|Kyoto Gases", "Emissions|CO2|Energy and Industrial Processes"]
+# data = data[data.variable.isin(variables_to_regress)]
 
 # print(data["carbon price|Avg NPV (2030-2100)"].to_list())
-
+# %% 
 print("*"*50)
 
 print("min LAR", data["LAR"].min())
