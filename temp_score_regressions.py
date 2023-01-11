@@ -452,14 +452,12 @@ for i in range(len(results)):
     xmax = (ymax - intercept) / slope
     xmin = (ymin - intercept) / slope
     
-    # make with one index that refers to a point tuple (x, y)
+    # two boundary points as tuples (x, y)
     # bottom point (bottom-right)
-    results[i]['boundary_bottom_lar'] = xmin
-    results[i]['boundary_bottom_temp'] = ymin
+    results[i]['boundary_bottom'] = (xmin, ymin)
     
     # top point (top-left)
-    results[i]['boundary_top_lar'] = xmax
-    results[i]['boundary_top_temp'] = ymax
+    results[i]['boundary_top'] = (xmax, ymax)
     
     # figures 
     # create x values in space
@@ -511,7 +509,7 @@ for i in range(len(results)):
 # written to json -> talk to Sorin about implementation of boundaries
 # suggest if-statements for lar above or below min/max boundary lar
 # keep above 3.5 and below 1 degree indicators
-with open("regres_results.json", "w") as handle:
+with open("regression_results.json", "w") as handle:
     json.dump(results, handle)
 #results.to_json("regres_coefs.json")
 #results.to_csv("regres_coef.csv")    
