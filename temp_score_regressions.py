@@ -409,6 +409,8 @@ for user_policy, user_technology in itertools.product(policy, tech):
     
     inner_dict['max_temp'] = regression_df['2100'].max()
     inner_dict['min_temp'] = regression_df['2100'].min()
+    
+    # this is just for use in next cell for the data points - it will be deleted
     inner_dict['data'] = regression_df
     
     for type_ in ["linear", "poly"]:
@@ -450,12 +452,16 @@ for i in range(len(results)):
     xmax = (ymax - intercept) / slope
     xmin = (ymin - intercept) / slope
     
+    # make with one index that refers to a point tuple (x, y)
+    # bottom point (bottom-right)
     results[i]['boundary_bottom_lar'] = xmin
     results[i]['boundary_bottom_temp'] = ymin
     
+    # top point (top-left)
     results[i]['boundary_top_lar'] = xmax
     results[i]['boundary_top_temp'] = ymax
     
+    # figures 
     # create x values in space
     xfit = np.linspace(xmin, xmax, 600) # to get same box always
     
