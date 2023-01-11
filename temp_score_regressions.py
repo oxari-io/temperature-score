@@ -208,7 +208,7 @@ data = data.loc[data["variable"].isin(["Emissions|Kyoto Gases",
                                ])]
 # data
 # %%
-# calculate Anual Reduction
+# calculate Annual Reduction
 def calculate_lar_by_two_points(base_year, target_year, val_base_year, val_target_year):
     # just pctage of change
     # return 100 * (val_target_year - val_base_year) / val_base_year / (target_year - base_year)
@@ -275,7 +275,7 @@ test = data.iloc[1][[str(y) for y in column_years_to_consider]]
 # check types
 # print([type(d) for d in data.columns])
 
-# create AR column
+# create LAR column
 data["LAR"] = data.apply(lambda row_: calculate_aggragated_lar([y for y in column_years_to_consider],
                                                               [row_[str(y)] for y in column_years_to_consider]), axis=1)
 
@@ -406,24 +406,107 @@ for user_policy, user_technology in itertools.product(policy, tech):
 
     regression_df = pd.merge(lar_df, temp66, on="model-scenario", how="left")
     regression_df = regression_df.dropna(subset=["LAR"])
+    
+    inner_dict['max_temp'] = regression_df['2100'].max()
+    inner_dict['min_temp'] = regression_df['2100'].min()
+    inner_dict['data'] = regression_df
+    
     for type_ in ["linear", "poly"]:
         output = run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_=type_, poly_degree=poly_degree)
         inner_dict[type_] = output
         #results.loc[idx, type_] = output
     
     results.append(inner_dict)
+    
 
     idx += 1
     # poly_degrees = [2,3,4,5]
     # for poly_degree in poly_degrees:
     #     r2 = run_regression(regression_df["LAR"].to_numpy(), regression_df["2100"].to_numpy(), type_="poly", poly_degree=poly_degree)
 
-#  %%
-with open("regres_coefs.json", "w") as handle:
+
+
+#%%
+# make functions with dynamic min and max values
+
+# a higher sensitivity make the boundaries more responsive to the regression slope than a lower one
+sensitivity = 1
+
+for i in range(len(results)):
+    
+    policy = results[i]['policy']
+    tech = results[i]['technology']
+    
+    # read coefficient
+    intercept = results[i]['linear'][1]
+    slope = results[i]['linear'][0]
+    
+    # get boundary values
+    # y values
+    ymax = results[i]['max_temp'] + sensitivity * np.abs(slope)
+    ymin = results[i]['min_temp'] - sensitivity * np.abs(slope)
+
+    # Get x values at that point
+    xmax = (ymax - intercept) / slope
+    xmin = (ymin - intercept) / slope
+    
+    results[i]['boundary_bottom_lar'] = xmin
+    results[i]['boundary_bottom_temp'] = ymin
+    
+    results[i]['boundary_top_lar'] = xmax
+    results[i]['boundary_top_temp'] = ymax
+    
+    # create x values in space
+    xfit = np.linspace(xmin, xmax, 600) # to get same box always
+    
+    # predict y in that space
+    ypred =  intercept + slope * xfit
+
+    # get 1000 y values
+    yfit = ypred
+    yup = [ymax] * 200
+    ydown = [ymin] * 200
+    
+    yfit = np.insert(yfit, 0, yup)
+    yfit = np.insert(yfit, len(yfit), ydown)
+    
+    # get 1000 x values
+    xup = np.linspace(-10, xmax, 200)
+    xdown = np.linspace(xmin, 20, 200)
+    
+    xfit = np.insert(xfit, 0, xup)
+    xfit = np.insert(xfit, len(xfit), xdown)    
+
+    # extract data
+    xdata = results[i]['data']['LAR']
+    ydata = results[i]['data']['2100']    
+    
+    # display scatter and fitted line - need to fix (get from data df)
+    plt.figure()
+    plt.plot(xdata, ydata, '.')
+    plt.plot(xfit, yfit, '-')
+    plt.ylim(0, 4)
+    plt.xlim(-2, 7)
+    plt.ylabel('Temperature in 2100')
+    plt.xlabel('LAR')
+    plt.title(f'Policy: {policy}; Technology: {tech}')
+    
+    # add range text
+    plt.text(2, 0.25, f'Range({ymin:.2f}-{ymax:.2f})')
+        
+    # save figure
+    plt.savefig(f'graphs/graph_cumCDR_{i}_pol_{policy}_tech_{tech}.pdf')
+    plt.savefig(f'graphs/graph_cumCDR_{i}_pol_{policy}_tech_{tech}.svg', format='svg')
+    
+    # remove data for json export
+    results[i].pop('data')
+      
+
+# written to json -> talk to Sorin about implementation of boundaries
+# suggest if-statements for lar above or below min/max boundary lar
+# keep above 3.5 and below 1 degree indicators
+with open("regres_results.json", "w") as handle:
     json.dump(results, handle)
 #results.to_json("regres_coefs.json")
-#results.to_csv("regres_coef.csv")
-#%%
-
-
+#results.to_csv("regres_coef.csv")    
 #%%
