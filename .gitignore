@@ -1,2 +1,6 @@
 # mac
 .DS_Store
+
+# graphs in folder
+graphs/*
+!graphs/.gitkeep
