@@ -1,6 +1,6 @@
 ## Table of Contents
 
-- [Methodology](#methodology
+- [Methodology](#methodology)
   - [Introduction](#introduction)
   - [Temperature Score Estimation](#temperature-score-estimation)
     - [Prediction & Extrapolation](#prediction--extrapolation)
