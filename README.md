@@ -170,10 +170,10 @@ Figures 1 and 2 show that this is ensured by setting minimum and maximum
 boundaries.
 
 **Figure 1**
-[Figure 1](media/image1.png)
+![Figure 1\n](media/image1.png)
 
 **Figure 2**
-[Figure 2](media/image2.png)
+![Figure 2](media/image2.png)
 
 These minimum and maximum boundaries should incorporate two main sources
 of information/uncertainty: (i) the minimum and maximum temperature
