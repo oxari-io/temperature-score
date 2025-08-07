@@ -505,10 +505,6 @@ for i in range(len(results)):
     # remove data for json export
     results[i].pop('data')
       
-
-# written to json -> talk to Sorin about implementation of boundaries
-# suggest if-statements for lar above or below min/max boundary lar
-# keep above 3.5 and below 1 degree indicators
 with open("regression_results.json", "w") as handle:
     json.dump(results, handle)
 #results.to_json("regres_coefs.json")
