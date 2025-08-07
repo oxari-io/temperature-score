@@ -1,13 +1,14 @@
 ## Table of Contents
 
-- [Introduction](#introduction)
-- [Temperature Score Estimation](#temperature-score-estimation)
-  - [Prediction & Extrapolation](#prediction--extrapolation)
-  - [Scenario Choice](#scenario-choice)
-    - [Step 1: Building the scenario sets](#step-1-building-the-scenario-sets)
-    - [Step 2: Estimating regressions](#step-2-estimating-regressions)
-  - [Company temperature scores](#company-temperature-scores)
-- [Final Comments](#final-comments)
+- [Methodology](#methodology
+  - [Introduction](#introduction)
+  - [Temperature Score Estimation](#temperature-score-estimation)
+    - [Prediction & Extrapolation](#prediction--extrapolation)
+    - [Scenario Choice](#scenario-choice)
+      - [Step 1: Building the scenario sets](#step-1-building-the-scenario-sets)
+      - [Step 2: Estimating regressions](#step-2-estimating-regressions)
+    - [Company temperature scores](#company-temperature-scores)
+  - [Final Comments](#final-comments)
 - [Getting Started](#getting-started)
 - [Repository Structure](#repository-structure)
 - [Credits & Data Source](#credits--data-source)
