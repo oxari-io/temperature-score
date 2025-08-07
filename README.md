@@ -1,5 +1,3 @@
-Til Dietrich, Sorin Dragan, Paul Rösler
-
 Table of Content
 
 **[Introduction](#introduction)**  
@@ -260,3 +258,53 @@ the global environment.
 [^9]: *Total Kyoto GHG emissions, including CO2, CH4, N2O and F-gases
     (based on 100-year GWPs from AR5 for aggregation of different gases)
     (Mt CO2-equiv/yr)*
+
+## Getting Started
+
+To explore or apply this methodology:
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-org/oxari-temperature-score.git
+   ```
+2. Run `temp_score_regressions.py` using Python 3
+3. Make sure the following files are in the `./input_data/` folder:
+   - `iamc15_scenario_data_world_r2.0.xlsx`
+   - `iamc15_scenario_data_world_r2.0.csv`
+   - `baselines.csv`
+   - `temp66.csv`
+   - `sr15_metadata_indicators_r2.0.xlsx`
+
+---
+
+## Repository Structure
+
+- `temp_score_regressions.py` – Main script for regression modeling  
+- `media/` – Images used in documentation  
+- `input_data/` – Scenario and baseline data from external source  
+- `README.md` – This documentation file
+
+---
+
+## Credits & Data Source
+
+This project builds on data and methodology made publicly available by [CDP's TROPICS-regression repository](https://github.com/CDPworldwide/TROPICS-regression).
+
+The following files in `./input_data/` are sourced from that repository:
+
+- `iamc15_scenario_data_world_r2.0.xlsx`
+- `iamc15_scenario_data_world_r2.0.csv`
+- `baselines.csv`
+- `temp66.csv`
+- `sr15_metadata_indicators_r2.0.xlsx`
+
+We have not modified these files. They are included to support transparency and reproducibility of the extended methodology implemented here.  
+Please refer to the [CDP's TROPICS-regression repository](https://github.com/CDPworldwide/TROPICS-regression) for licensing, documentation, and updates.
+
+---
+
+## Authors
+
+Developed at Oxari B.V. (now closed)
+
+---
