@@ -290,6 +290,15 @@ To explore or apply this methodology:
 
 ---
 
+# Requirements
+
+Tested with Python 3.11+. Install dependencies with:
+```bash
+pip install -r requirements.txt
+```
+
+---
+
 # Repository Structure
 
 - `temp_score_regressions.py` – Main script for regression modeling
