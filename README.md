@@ -14,7 +14,8 @@
 - [Authors](#authors)
 
 
-# Introduction
+# Methodology
+## Introduction
 
 This document lays out the methodological framework for the development
 of the new *Oxari Temperature Score*[^1] (OTS). It partially builds on
@@ -62,7 +63,7 @@ nine (9) possible policy-technology scenario combinations.
 In the following, we provide a detailed description of the underlying
 methodology.
 
-# Temperature Score Estimation
+## Temperature Score Estimation
 
 The estimation of the Oxari temperature scores consists of two main
 parts. Firstly, the prediction & extrapolation of CO2 emissions and
@@ -74,7 +75,7 @@ technology-dependency assumptions. The corporate emissions and climate
 scenarios are matched through a common variable, the linear annual
 reduction (LAR, in %) in CO2 emissions.
 
-## Prediction & Extrapolation
+### Prediction & Extrapolation
 
 Many companies do not report their CO2 emissions and only few set
 reduction targets. This makes it intrinsically difficult to get an
@@ -92,7 +93,7 @@ historical and current reported and predicted values, the LAR is
 calculated and matched with the average annual reduction derived from
 the scenarios as described in the next section.
 
-## Scenario Choice
+### Scenario Choice
 
 Research on future pathways of the world’s climate is manifold. Release
 2.0 from the Integrated Assessment Modeling Consortium (IAMC) contains
@@ -129,7 +130,7 @@ suits their expectations.
 | 3                     | 2030         |                                                     | 1.5C and lower 2C |                                       | -15         |
 | 4                     | 2100         |                                                     |                   |                                       | -20         |
 
-### Step 1: Building the scenario sets
+#### Step 1: Building the scenario sets
 
 To do so, we split the scenarios into three policy categories,
 represented by the upper, middle and lower tercile of carbon prices.
@@ -145,7 +146,7 @@ highlights our approach of combining thorough statistical analysis while
 also making decisions based on qualitative arguments where it makes
 sense.
 
-### Step 2: Estimating regressions
+#### Step 2: Estimating regressions
 
 We start by calculating the LAR for each scenario. Subsequently, we use
 bounded linear regressions (see below) to correlate the resulting LAR
@@ -188,7 +189,7 @@ This implies that the minimum/maximum boundaries of scenario sets with a
 relatively steeper slope are further from the minimum/maximum
 observations than those with a flatter slope (see Figures 1 and 2) .
 
-## Company temperature scores
+### Company temperature scores
 **DISCLAIMER**: This is not part of this repository and will need to be performed
 using a dataset of company CO2e emissions time-series data.
 
@@ -199,7 +200,7 @@ sets to choose from, the users can see their idea of the future
 political and technological development reflected in the displayed
 temperature score. 
 
-# Final Comments
+## Final Comments
 
 The OTS enables the classification of over 30,000 companies in the
 macro-political climate framework and therefore covers large parts of
@@ -267,7 +268,7 @@ the global environment.
 
 ---
 
-## Getting Started
+# Getting Started
 
 To explore or apply this methodology:
 
@@ -288,7 +289,7 @@ To explore or apply this methodology:
 
 ---
 
-## Repository Structure
+# Repository Structure
 
 - `temp_score_regressions.py` – Main script for regression modeling
 - `regression_results.json` – Output file containing all regression coefficients
@@ -300,7 +301,7 @@ To explore or apply this methodology:
 
 ---
 
-## Credits & Data Source
+# Credits & Data Source
 
 This project builds on data and methodology made publicly available by [CDP's TROPICS-regression repository](https://github.com/CDPworldwide/TROPICS-regression).
 
@@ -317,7 +318,7 @@ Please refer to the [CDP's TROPICS-regression repository](https://github.com/CDP
 
 ---
 
-## Authors
+# Authors
 
 Developed at Oxari B.V. (now closed)
 
