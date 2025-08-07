@@ -185,13 +185,15 @@ relatively steeper slope are further from the minimum/maximum
 observations than those with a flatter slope (see Figures 1 and 2) .
 
 ## Company temperature scores
+**DISCLAIMER**: This is not part of this repository and will need to be performed
+using a dataset of company CO2e emissions time-series data.
 
 The final step matches the company-level LAR, with the predictions
 obtained for the global warming scenarios to determine the corresponding
 temperature score. As there are 9 different technology/policy scenario
 sets to choose from, the users can see their idea of the future
 political and technological development reflected in the displayed
-temperature score.
+temperature score. 
 
 # Final Comments
 
@@ -259,13 +261,15 @@ the global environment.
     (based on 100-year GWPs from AR5 for aggregation of different gases)
     (Mt CO2-equiv/yr)*
 
+---
+
 ## Getting Started
 
 To explore or apply this methodology:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-org/oxari-temperature-score.git
+   git clone https://github.com/your-org/trajectory-temperature-score.git
    ```
 2. Run `temp_score_regressions.py` using Python 3
 3. Make sure the following files are in the `./input_data/` folder:
@@ -274,14 +278,20 @@ To explore or apply this methodology:
    - `baselines.csv`
    - `temp66.csv`
    - `sr15_metadata_indicators_r2.0.xlsx`
+4. This creates:
+   - `regression_results.json` containing regression results
+   - graphs in `./graphs/` with temperature-LAR regression lines for each tech-policy scenario bucket
 
 ---
 
 ## Repository Structure
 
-- `temp_score_regressions.py` – Main script for regression modeling  
-- `media/` – Images used in documentation  
-- `input_data/` – Scenario and baseline data from external source  
+- `temp_score_regressions.py` – Main script for regression modeling
+- `regression_results.json` – Output file containing all regression coefficients
+- `requirements.txt` – Python packages required to run the script
+- `input_data/` – Input scenario and metadata (from external source)
+- `graphs/` – Folder with all generated regression plots
+- `media/` – Any supporting documentation visuals
 - `README.md` – This documentation file
 
 ---
@@ -298,7 +308,7 @@ The following files in `./input_data/` are sourced from that repository:
 - `temp66.csv`
 - `sr15_metadata_indicators_r2.0.xlsx`
 
-We have not modified these files. They are included to support transparency and reproducibility of the extended methodology implemented here.  
+We have not modified these files. They are included to support transparency and reproducibility of the extended methodology implemented here.\
 Please refer to the [CDP's TROPICS-regression repository](https://github.com/CDPworldwide/TROPICS-regression) for licensing, documentation, and updates.
 
 ---
