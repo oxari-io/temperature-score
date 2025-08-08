@@ -332,4 +332,8 @@ Please refer to the [CDP's TROPICS-regression repository](https://github.com/CDP
 
 Developed at Oxari B.V. (now closed)
 
+If you have any questions, please feel free to **contact** one of the main contributors:
+- [Sorin Dragan](https://github.com/sorindragan)
+- [Til Dietrich](https://github.com/tildtr)
+
 ---
